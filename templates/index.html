@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .right-align { text-align: right; }
+    </style>
+</head>
+<body>
+    <!-- Tổng Data Sent -->
+    <label style="font-weight: bold;">Total Data Sent: <span id="total-data-sent">0</span> bytes    </label>
+    <label style="font-weight: bold;">Max Unique Users: <span id="max-unique-users">0</span>     </label>
+    <label style="font-weight: bold;">Peak: <span id="bw-peak">0</span> mbps</label>
+
+    <!-- Bộ lọc -->
+    <form id="filter-form">
+        <label for="app">App:</label>
+        <select id="app" name="app" {% if not is_admin %} disabled {% endif %}>
+            {% if is_admin %}
+                <option value="">--All--</option>
+            {% endif %}
+            {% for app in apps %}
+                <option value="{{ app['app'] }}" {% if not is_admin and app['app'] == session['username'] %} selected {% endif %}>
+                    {{ app['app'] }}
+                </option>
+            {% endfor %}
+        </select>
+
+        <label for="stream">Stream:</label>
+        <select id="stream" name="stream">
+            <option value="">--All--</option>
+            {% for stream in streams %}
+            <option value="{{ stream['stream'] }}">{{ stream['stream'] }}</option>
+            {% endfor %}
+        </select>
+
+        <label for="start_time">Start Time:</label>
+        <input type="datetime-local" id="start_time" name="start_time">
+
+        <label for="end_time">End Time:</label>
+        <input type="datetime-local" id="end_time" name="end_time">
+
+        <button type="button" onclick="fetchData()">Apply Filter</button>
+    </form>
+
+    <!-- Chọn kiểu hiển thị -->
+    <button onclick="showTable()">Show Table</button>
+    <button onclick="showChart()">Show Chart</button>
+    <button onclick="downloadExcel()">Download Excel</button>
+    <button onclick="window.location.href='/logout'">Logout</button>
+
+
+    <!-- Khu vực hiển thị -->
+    <div id="table-view" style="display: none;">
+        <table border="1" id="data-table">
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>App</th>
+                    <th>Stream</th>
+                    <th class="right-align">Requests</th>
+                    <th class="right-align">Unique Users</th>
+                    <th class="right-align">Data Sent (bytes)</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <div id="chart-view" style="display: none;">
+        <canvas id="data-chart" width="400" height="200"></canvas>
+    </div>
+
+    <script>
+        let chart;
+
+        async function fetchData() {
+            const app = document.getElementById("app").value;
+            const stream = document.getElementById("stream").value;
+            const startTime = document.getElementById("start_time").value;
+            const endTime = document.getElementById("end_time").value;
+
+            const response = await fetch("/get_data", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    app: app,
+                    stream: stream,
+                    time: startTime && endTime ? [startTime, endTime] : null
+                })
+            });
+
+            const result = await response.json();
+            const detailedData = result.records;  // Dữ liệu chi tiết cho bảng
+            const chartData = result.chart_data;  // Dữ liệu tổng hợp cho biểu đồ
+            const totalDataSent = result.total_data_sent;
+            const maxUniqueUsers = Math.max(...chartData.map(record => record.total_unique_users || 0));
+            const bwPeak = (Math.max(...chartData.map(record => record.total_data_sent || 0))*8/1000000/300).toFixed(2);
+
+            document.getElementById("max-unique-users").innerText = maxUniqueUsers;
+            document.getElementById("bw-peak").innerText = bwPeak;
+            document.getElementById("total-data-sent").innerText = totalDataSent || 0;
+
+            // Hiển thị dữ liệu chi tiết trong bảng
+            displayTable(detailedData);
+
+            // Hiển thị dữ liệu tổng hợp trong biểu đồ
+            displayChart(chartData);
+        }
+
+        // Chuyển đổi định dạng thời gian
+        function formatTime(dateString) {
+            const date = new Date(dateString);
+            return date.toISOString().replace("T", " ").split(".")[0];
+        }
+
+        function displayTable(data) {
+            const table = document.getElementById("data-table").getElementsByTagName("tbody")[0];
+            table.innerHTML = "";
+            data.forEach(record => {
+                const row = table.insertRow();
+                row.innerHTML = `
+                    <td>${formatTime(record.time)}</td>
+                    <td>${record.app}</td>
+                    <td>${record.stream}</td>
+                    <td class="right-align">${record.requests}</td>
+                    <td class="right-align">${record.unique_users}</td>
+                    <td class="right-align">${record.data_sent}</td>
+                `;
+            });
+        }
+
+        function displayChart(data) {
+            const ctx = document.getElementById("data-chart").getContext("2d");
+
+            if (chart) chart.destroy();  // Xóa biểu đồ cũ nếu có
+
+            const labels = data.map(record => formatTime(record.time));
+            const uniqueUsers = data.map(record => record.total_unique_users);
+            const dataSent = data.map(record => record.total_data_sent);
+
+            chart = new Chart(ctx, {
+                type: "line",
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: "Unique Users",
+                            data: uniqueUsers,
+                            borderColor: "blue",
+                            backgroundColor: "rgba(0, 0, 0, 0)",
+                            fill: true,
+                            yAxisID: 'y1',
+                            tension: 0.4,  // Độ cong mềm mại
+                            pointRadius: 0
+                        },
+                        {
+                            label: "Data Sent (bytes)",
+                            data: dataSent,
+                            borderColor: "red",
+                            backgroundColor: "rgba(0, 0, 0, 0)",  // Không có nền
+                            fill: false,  // Tắt nền
+                            yAxisID: 'y2',
+                            tension: 0.4,  // Độ cong mềm mại
+                            pointRadius: 0
+                        }
+                    ]
+                },
+                options: {
+                    scales: {
+                        y1: {
+                            type: 'linear',
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Unique Users'
+                            },
+                        },
+                        y2: {
+                            type: 'linear',
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Data Sent (bytes)'
+                            },
+                            grid: {
+                                drawOnChartArea: false  // Loại bỏ lưới để phân biệt trục
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: false,
+                                text: 'Time'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+
+        function showTable() {
+            document.getElementById("table-view").style.display = "block";
+            document.getElementById("chart-view").style.display = "none";
+        }
+
+        function showChart() {
+            document.getElementById("table-view").style.display = "none";
+            document.getElementById("chart-view").style.display = "block";
+        }
+
+        async function downloadExcel() {
+            const app = document.getElementById("app").value;
+            const stream = document.getElementById("stream").value;
+            const startTime = document.getElementById("start_time").value;
+            const endTime = document.getElementById("end_time").value;
+
+            const response = await fetch("/download_excel", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    app: app,
+                    stream: stream,
+                    time: startTime && endTime ? [startTime, endTime] : null
+                })
+            });
+
+            const blob = await response.blob();
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "data_export.xlsx";
+            link.click();
+        }
+    </script>
+</body>
+</html>
