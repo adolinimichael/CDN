@@ -34,7 +34,7 @@ def load_data_to_db(filename, start_line):
     df['Time'] = pd.to_datetime(df['Time'], format='%m/%d/%Y %H:%M')
 
 
-    factor = 1.4  
+    factor = 2  
 
     for _, row in df.iterrows():
         data_sent_adjusted = round(row['Data Sent (bytes)'] * factor)
