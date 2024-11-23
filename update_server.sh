@@ -78,7 +78,7 @@ if [ ! -f "old_server.json" ]; then
     if ! tmux has-session -t $session 2>/dev/null; then
         bash run.sh
     else
-        tmux send-keys -t $session:2 C-c 'python3 monitor.py' Enter
+        tmux send-keys -t $session:1 C-c 'python3 monitor.py' Enter
     fi
     
     sudo systemctl daemon-reload
@@ -112,7 +112,7 @@ else
         if ! tmux has-session -t $session 2>/dev/null; then
             bash run.sh
         else
-            tmux send-keys -t $session:2 C-c 'python3 monitor.py' Enter
+            tmux send-keys -t $session:1 C-c 'python3 monitor.py' Enter
         fi
 
 	sudo systemctl daemon-reload
