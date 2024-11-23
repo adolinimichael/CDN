@@ -24,7 +24,29 @@ else
 fi
 
 sudo apt update -y
-sudo apt install jq bmon net-tools libnginx-mod-rtmp php-fpm php  mysql-server python3 python3-watchdog python3-mysql.connector libssl-dev python3-flask-sqlalchemy python3-flask-bcrypt python3-pandas python3-python-flask-jwt-extended -y
+sudo apt install gunicorn jq bmon net-tools libnginx-mod-rtmp php-fpm php  mysql-server python3 python3-watchdog python3-mysql.connector libssl-dev python3-flask-sqlalchemy python3-flask-bcrypt python3-pandas python3-python-flask-jwt-extended -y
 sudo apt remove apache2 -y
 bash mysql.sh
+
+sudo bash -c 'cat > /etc/systemd/system/cms.service <<EOF
+[Unit]
+Description=Gunicorn instance to serve cms
+After=network.target
+
+[Service]
+User=ubuntu
+Group=www-data
+WorkingDirectory=/home/ubuntu/CDN
+ExecStart=/usr/bin/gunicorn -w 2 -b unix:/var/run/cms/cms.sock cms:app
+
+[Install]
+WantedBy=multi-user.target
+EOF'
+
+sudo mkdir -p /var/run/cms
+sudo chown ubuntu:ubuntu /var/run/cms
+chmod 755 /var/run/cms
+sudo systemctl daemon-reload
+sudo systemctl enable cms.service
+sudo systemctl start cms.service
 bash

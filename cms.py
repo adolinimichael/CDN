@@ -1,7 +1,6 @@
 from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for, session, flash
 import mysql.connector
 import pandas as pd
-import ssl
 import configparser
 import json
 import subprocess
@@ -209,22 +208,5 @@ def run_update_script():
     except subprocess.CalledProcessError as e:
         print("Error occurred:", e)
 
-with open('server.json') as f:
-    data = json.load(f)
-    for app_info in data.get("apps", []):
-        domain = app_info[0]
-        wild_domain = f"wild.{'.'.join(domain.split('.')[1:])}"
-        cert_path = f"/home/ubuntu/CDN/ssl/{wild_domain}/fullchain.pem"
-        key_path = f"/home/ubuntu/CDN/ssl/{wild_domain}/privkey.pem"
-        domain_certificates[domain] = (cert_path, key_path)
-
-# Custom SNI handler to dynamically set SSL context based on domain
-def sni_handler(sock, server_name, context):
-    cert_paths = domain_certificates.get(server_name)
-    if cert_paths:
-        context.load_cert_chain(*cert_paths)
-
 if __name__ == "__main__":
-    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-    context.sni_callback = sni_handler
-    app.run(host="0.0.0.0", port=5000, ssl_context=context)
+    app.run(host="0.0.0.0")

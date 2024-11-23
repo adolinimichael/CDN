@@ -79,8 +79,10 @@ if [ ! -f "old_server.json" ]; then
         bash run.sh
     else
         tmux send-keys -t $session:2 C-c 'python3 monitor.py' Enter
-        tmux send-keys -t $session:0 C-c 'python3 cms.py' Enter
     fi
+    
+    sudo systemctl daemon-reload
+    sudo systemctl restart cms.service
 
 else
     if cmp -s "server.json" "old_server.json"; then
@@ -111,8 +113,10 @@ else
             bash run.sh
         else
             tmux send-keys -t $session:2 C-c 'python3 monitor.py' Enter
-            tmux send-keys -t $session:0 C-c 'python3 cms.py' Enter
         fi
+
+	sudo systemctl daemon-reload
+        sudo systemctl restart cms.service
 
     fi
 fi
