@@ -1,8 +1,8 @@
 #!/bin/bash
 
-DATA_DIR="data/log"
-OLD_DIR="data/old_log"
-OUTPUT_FILE="data/data.csv"
+DATA_DIR="/home/ubuntu/CDN/data/log"
+OLD_DIR="/home/ubuntu/CDN/data/old_log"
+OUTPUT_FILE="/home/ubuntu/CDN/data/data.csv"
 
 check_and_add_header() {
     if [ ! -f "$OUTPUT_FILE" ]; then

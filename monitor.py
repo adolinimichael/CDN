@@ -60,7 +60,7 @@ class BandwidthAnalyzer:
 
     def save_data(self):
         for interval, channels in self.channel_data.items():
-            filename = f"data/log/bw_{interval}.csv"
+            filename = f"/home/ubuntu/CDN/data/log/bw_{interval}.csv"
             time_str = datetime.datetime.strptime(interval, "%Y-%m-%d_%H-%M").strftime("%m/%d/%Y %H:%M")
 
             with open(filename, 'w') as file:
@@ -208,5 +208,5 @@ def monitor_log(log_file, server_config_file):
 
 if __name__ == "__main__":
     log_file_path = "/var/log/nginx/access.log"
-    server_config = "server.json"
+    server_config = "/home/ubuntu/CDN/server.json"
     monitor_log(log_file_path, server_config)

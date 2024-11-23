@@ -15,7 +15,7 @@ domain_certificates = {}
 # MySQL connection
 def get_db_connection():
     config = configparser.ConfigParser()
-    config.read('mysql.ini')
+    config.read('/home/ubuntu/CDN/mysql.ini')
 
     if 'mysql' not in config:
         raise ValueError("Missing 'mysql' section in mysql.ini")

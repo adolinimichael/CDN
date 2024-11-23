@@ -1,5 +1,7 @@
 sudo timedatectl set-timezone Asia/Ho_Chi_Minh
 
+chmod a+x /home/ubuntu/CDN/*.sh
+
 interface=$(ip -4 -o addr show up primary scope global | awk '{print $2}' | head -n 1)
 if [ -z "$interface" ]; then
     echo "Can not detect Internet interface."

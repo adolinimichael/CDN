@@ -1,6 +1,7 @@
 #!/bin/bash
 
-source mysql.ini
+ini_file="/path/to/mysql.ini"
+source "$ini_file"
 
 if [ -z "$user" ] || [ -z "$password" ] || [ -z "$database" ]; then
   echo "Please ensure mysql.conf contains database user, password, and database name."

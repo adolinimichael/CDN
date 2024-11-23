@@ -7,7 +7,7 @@ import configparser
 
 def connect_db():
     config = configparser.ConfigParser()
-    config.read('mysql.ini')
+    config.read('/home/ubuntu/CDN/mysql.ini')
 
     if 'mysql' not in config:
         raise ValueError("Missing 'mysql' section in mysql.ini")
@@ -88,5 +88,5 @@ def monitor_file(filename):
             time.sleep(30)  
 
 if __name__ == "__main__":
-    file_path = "data/data.csv"
+    file_path = "/home/ubuntu/CDN/data/data.csv"
     monitor_file(file_path)

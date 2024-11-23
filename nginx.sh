@@ -1,9 +1,9 @@
 #!/bin/bash
 
-nginx_conf="nginx/nginx.conf"
-server_json="server.json"
+nginx_conf="/home/ubuntu/CDN/nginx/nginx.conf"
+server_json="/home/ubuntu/CDN/server.json"
 
-cat nginx/nginx1.conf > $nginx_conf
+cat /home/ubuntu/CDN/nginx/nginx1.conf > $nginx_conf
 
 server_names=$(jq -r '.apps[][0]' "$server_json" | sort -u)
 
@@ -71,7 +71,7 @@ server {
     done
 } >> "$nginx_conf"
 
-cat nginx/nginx2.conf >> $nginx_conf
+cat /home/ubuntu/CDN/nginx/nginx2.conf >> $nginx_conf
 
 cat <<EOL >> "$nginx_conf"
 rtmp {

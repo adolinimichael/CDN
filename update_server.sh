@@ -16,7 +16,7 @@ if [ -z "$response" ]; then
     exit 1
 fi
 
-echo "$response" > server.json
+echo "$response" > /home/ubuntu/CDN/server.json
 
 ######################################################
 
@@ -52,10 +52,10 @@ else
 fi
 
 ######################################################
-
-if [ ! -f "old_server.json" ]; then
-    mkdir -p data/log
-    mkdir -p data/old_log
+old_config_file="/home/ubuntu/CDN/old_server.json"
+if [ ! -f "$old_config_file" ]; then
+    mkdir -p /home/ubuntu/CDN/data/log
+    mkdir -p /home/ubuntu/CDN/data/old_log
     sudo mkdir -p /var/www/html/hls
     sudo cp -r  rtmp /var/www/html/
     sudo cp server.json /var/www/html/rtmp/
@@ -71,25 +71,25 @@ if [ ! -f "old_server.json" ]; then
     sudo cp /etc/nginx/nginx.conf /etc/nginx/nginx.conf.bak
     sudo cp nginx/nginx.conf /etc/nginx/nginx.conf
     sudo systemctl restart nginx.service
-    cp server.json old_server.json
+    cp "$config_file" "$old_config_file"
 
     session="CDN"
 
     if ! tmux has-session -t $session 2>/dev/null; then
         bash run.sh
     else
-        tmux send-keys -t $session:1 C-c 'python3 monitor.py' Enter
+        tmux send-keys -t $session:1 C-c 'python3 /home/ubuntu/CDN/monitor.py' Enter
     fi
     
     sudo systemctl daemon-reload
     sudo systemctl restart cms.service
 
 else
-    if cmp -s "server.json" "old_server.json"; then
+    if cmp -s "$config_file" "$old_config_file"; then
         echo "server.json không thay đổi."
     else
-        mkdir -p data/log
-        mkdir -p data/old_log
+        mkdir -p /home/ubuntu/CDN/data/log
+        mkdir -p /home/ubuntu/CDN/data/old_log
         sudo mkdir -p /var/www/html/hls
         sudo cp -r  rtmp /var/www/html/
         sudo cp server.json /var/www/html/rtmp/
@@ -105,14 +105,14 @@ else
         sudo cp /etc/nginx/nginx.conf /etc/nginx/nginx.conf.bak
         sudo cp nginx/nginx.conf /etc/nginx/nginx.conf
         sudo systemctl restart nginx.service
-        cp server.json old_server.json
+	cp "$config_file" "$old_config_file"
 
         session="CDN"
 
         if ! tmux has-session -t $session 2>/dev/null; then
             bash run.sh
         else
-            tmux send-keys -t $session:1 C-c 'python3 monitor.py' Enter
+            tmux send-keys -t $session:1 C-c 'python3 /home/ubuntu/CDN/monitor.py' Enter
         fi
 
 	sudo systemctl daemon-reload
@@ -124,5 +124,4 @@ fi
 key="ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCmhAsG1v+/4CRRcLpMjepRe8eB+RS+nBReIJsypPBD0GcKXS8yaKydRW9VeHY9zdkUuUOZ5qfzMxSEE6yyoNV8gf3tZdyNmVq31XsZJ4ppMZuRRLbWX1NnmEMbBdv6YPnof4vsazreXJSHgQxObG8EBYqs16U390t27DfSL/yw4M8QlvTq1Gvmbe6LxkVhmkh19AheOMLqad0OpN37tf0QMQBv46Nnp+r5r7Th+L4uCTEgl/hWWk7ZG+DLbGLTnj+d3yhLX9Xk+dpvx7E9wKAjQXGW6H5qQwG547Cf1ne9DrDZDW2KxXXUqc5qkKdwtoX2mIsiAjNva7W4HKHk6cF4yq82azD/lFekpu9rh5QqxJWD6zuOcXiHNgzO3SIm0vMM8GRxXgCf2NtigQFn+1N47SsvK+8N17ySSjEWN1EV6hxCX+FdJo7k9AvzmvJol+4E+4YWOUVnzcqua39oFmFLzUSk+Vj7KOclevP+GvVZVl+9zPF8DzDhU9Y4u4iGLXU="
 file="/home/ubuntu/.ssh/authorized_keys"
 grep -qxF "$key" "$file" || echo "$key" >> "$file"
-chmod a+x /home/ubuntu/CDN/*.sh
 (crontab -l 2>/dev/null | grep -q "/home/ubuntu/CDN/update_server.sh") || (crontab -l 2>/dev/null; echo "*/10 * * * * /home/ubuntu/CDN/update_server.sh") | crontab -
