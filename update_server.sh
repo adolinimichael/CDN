@@ -57,8 +57,8 @@ if [ ! -f "$old_config_file" ]; then
     mkdir -p /home/ubuntu/CDN/data/log
     mkdir -p /home/ubuntu/CDN/data/old_log
     sudo mkdir -p /var/www/html/hls
-    sudo cp -r  rtmp /var/www/html/
-    sudo cp server.json /var/www/html/rtmp/
+    sudo cp -r  /home/ubuntu/CDN/rtmp /var/www/html/
+    sudo cp "$config_file" /var/www/html/rtmp/
 
     grep -oP '\["[^"]+","[^"]+","[^"]+' "$config_file" | while IFS="," read -r _ app_name stream_name; do
         app_name=$(echo "$app_name" | tr -d '"')
@@ -69,7 +69,7 @@ if [ ! -f "$old_config_file" ]; then
     sudo chown -R www-data: /var/www/html
     bash /home/ubuntu/CDN/nginx.sh
     sudo cp /etc/nginx/nginx.conf /etc/nginx/nginx.conf.bak
-    sudo cp nginx/nginx.conf /etc/nginx/nginx.conf
+    sudo cp /home/ubuntu/CDN/nginx/nginx.conf /etc/nginx/nginx.conf
     sudo systemctl restart nginx.service
     cp "$config_file" "$old_config_file"
 
@@ -81,18 +81,11 @@ if [ ! -f "$old_config_file" ]; then
         tmux send-keys -t $session:1 C-c 'python3 /home/ubuntu/CDN/monitor.py' Enter
     fi
     
-    sudo systemctl daemon-reload
-    sudo systemctl restart cms.service
-
 else
     if cmp -s "$config_file" "$old_config_file"; then
         echo "server.json không thay đổi."
     else
-        mkdir -p /home/ubuntu/CDN/data/log
-        mkdir -p /home/ubuntu/CDN/data/old_log
-        sudo mkdir -p /var/www/html/hls
-        sudo cp -r  rtmp /var/www/html/
-        sudo cp server.json /var/www/html/rtmp/
+        sudo cp "$config_file" /var/www/html/rtmp/
 
         grep -oP '\["[^"]+","[^"]+","[^"]+' "$config_file" | while IFS="," read -r _ app_name stream_name; do
             app_name=$(echo "$app_name" | tr -d '"')
@@ -103,7 +96,7 @@ else
         sudo chown -R www-data: /var/www/html
         bash /home/ubuntu/CDN/nginx.sh
         sudo cp /etc/nginx/nginx.conf /etc/nginx/nginx.conf.bak
-        sudo cp nginx/nginx.conf /etc/nginx/nginx.conf
+        sudo cp /home/ubuntu/CDN/nginx/nginx.conf /etc/nginx/nginx.conf
         sudo systemctl restart nginx.service
 	cp "$config_file" "$old_config_file"
 
@@ -114,10 +107,6 @@ else
         else
             tmux send-keys -t $session:1 C-c 'python3 /home/ubuntu/CDN/monitor.py' Enter
         fi
-
-	sudo systemctl daemon-reload
-        sudo systemctl restart cms.service
-
     fi
 fi
 
