@@ -1,6 +1,6 @@
 #!/bin/bash
 
-ini_file="/path/to/mysql.ini"
+ini_file="/home/ubuntu/CDN/mysql.ini"
 source "$ini_file"
 
 if [ -z "$user" ] || [ -z "$password" ] || [ -z "$database" ]; then
