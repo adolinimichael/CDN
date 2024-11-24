@@ -67,7 +67,7 @@ if [ ! -f "$old_config_file" ]; then
     done
 
     sudo chown -R www-data: /var/www/html
-    bash nginx.sh
+    bash /home/ubuntu/CDN/nginx.sh
     sudo cp /etc/nginx/nginx.conf /etc/nginx/nginx.conf.bak
     sudo cp nginx/nginx.conf /etc/nginx/nginx.conf
     sudo systemctl restart nginx.service
@@ -76,7 +76,7 @@ if [ ! -f "$old_config_file" ]; then
     session="CDN"
 
     if ! tmux has-session -t $session 2>/dev/null; then
-        bash run.sh
+        bash /home/ubuntu/CDN/run.sh
     else
         tmux send-keys -t $session:1 C-c 'python3 /home/ubuntu/CDN/monitor.py' Enter
     fi
@@ -101,7 +101,7 @@ else
         done
 
         sudo chown -R www-data: /var/www/html
-        bash nginx.sh
+        bash /home/ubuntu/CDN/nginx.sh
         sudo cp /etc/nginx/nginx.conf /etc/nginx/nginx.conf.bak
         sudo cp nginx/nginx.conf /etc/nginx/nginx.conf
         sudo systemctl restart nginx.service
@@ -110,7 +110,7 @@ else
         session="CDN"
 
         if ! tmux has-session -t $session 2>/dev/null; then
-            bash run.sh
+            bash /home/ubuntu/CDN/run.sh
         else
             tmux send-keys -t $session:1 C-c 'python3 /home/ubuntu/CDN/monitor.py' Enter
         fi
