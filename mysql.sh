@@ -1,22 +1,32 @@
 config_file="/etc/mysql/mysql.conf.d/mysqld.cnf"
-config_line="performance_schema = off"
 
-if grep -q -E "^[^#]*\s*performance_schema\s*=" "$config_file"; then
-    if grep -q -E "^[^#]*\s*performance_schema\s*=\s*on" "$config_file"; then
-        sudo sed -i 's/^\([^#]*performance_schema\s*=\s*\)on/\1off/' "$config_file"
-        echo "Updated configuration: 'performance_schema = off'."
+check_and_update() {
+    local config_key="$1"
+    local expected_value="$2"
+    local config_line="$config_key = $expected_value"
+
+    if grep -q -E "^\s*$config_key\s*=" "$config_file"; then
+        if ! grep -q -E "^\s*$config_key\s*=\s*$expected_value" "$config_file"; then
+            sudo sed -i "s|^\(\s*$config_key\s*=\s*\).*|\1$expected_value|" "$config_file"
+            echo "Updated configuration: '$config_line'."
+        else
+            echo "The configuration '$config_line' already exists with the correct value."
+        fi
     else
-        echo "The configuration line already exists in the file with the correct value."
+        if grep -q "#\s*$config_key\s*=" "$config_file"; then
+            sudo sed -i "s|#\s*$config_key\s*=.*|$config_line|" "$config_file"
+            echo "Uncommented and set configuration: '$config_line'."
+        else
+            echo "$config_line" | sudo tee -a "$config_file" > /dev/null
+            echo "Added configuration: '$config_line'."
+        fi
     fi
-else
-    if grep -q "#\s*performance_schema\s*=" "$config_file"; then
-        sudo sed -i 's/#\s*performance_schema\s*=.*/performance_schema = off/' "$config_file"
-        echo "Uncommented and set configuration: 'performance_schema = off'."
-    else
-        echo "$config_line" | sudo tee -a "$config_file" > /dev/null
-        echo "Added configuration: 'performance_schema = off'."
-    fi
-fi
+}
+
+check_and_update "performance_schema" "off"
+check_and_update "bind-address" "0.0.0.0"
+check_and_update "mysqlx-bind-address" "0.0.0.0"
+sudo systemctl restart mysql.service
 
 MYSQL_USER="root"         
 
