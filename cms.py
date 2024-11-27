@@ -74,12 +74,13 @@ def index():
     if session.get("is_admin"):
         cursor.execute("SELECT DISTINCT app FROM data")
         apps = cursor.fetchall()
+        cursor.execute("SELECT DISTINCT stream FROM data")
+        streams = cursor.fetchall()
     else:
         cursor.execute("SELECT DISTINCT app FROM data WHERE app = %s", (session["username"],))
         apps = cursor.fetchall()
-
-    cursor.execute("SELECT DISTINCT stream FROM data")
-    streams = cursor.fetchall()
+        cursor.execute("SELECT DISTINCT stream FROM data WHERE app = %s", (session["username"],))
+        streams = cursor.fetchall()
     cursor.close()
     conn.close()
     
