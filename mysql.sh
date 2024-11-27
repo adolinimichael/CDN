@@ -2,11 +2,16 @@ config_file="/etc/mysql/mysql.conf.d/mysqld.cnf"
 config_line="performance_schema = off"
 
 if grep -q -E "^[^#]*\s*performance_schema\s*=" "$config_file"; then
-    echo "The configuration line already exists in the file, no need to add it."
+    if grep -q -E "^[^#]*\s*performance_schema\s*=\s*on" "$config_file"; then
+        sudo sed -i 's/^\([^#]*performance_schema\s*=\s*\)on/\1off/' "$config_file"
+        echo "Updated configuration: 'performance_schema = off'."
+    else
+        echo "The configuration line already exists in the file with the correct value."
+    fi
 else
     if grep -q "#\s*performance_schema\s*=" "$config_file"; then
         sudo sed -i 's/#\s*performance_schema\s*=.*/performance_schema = off/' "$config_file"
-        echo "Added configuration: 'performance_schema = off'."
+        echo "Uncommented and set configuration: 'performance_schema = off'."
     else
         echo "$config_line" | sudo tee -a "$config_file" > /dev/null
         echo "Added configuration: 'performance_schema = off'."
