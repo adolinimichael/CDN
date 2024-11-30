@@ -10,7 +10,6 @@ import datetime
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'  # Replace with a strong secret key
-domain_certificates = {}
     
 # MySQL connection
 def get_db_connection():
