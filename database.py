@@ -4,6 +4,10 @@ import mysql.connector
 import time
 import os
 import configparser
+import socket
+
+def get_hostname():
+    return socket.gethostname()
 
 def connect_db():
     config = configparser.ConfigParser()
@@ -41,11 +45,11 @@ def load_data_to_db(filename, start_line):
         
         timestamp_str = row['Time'].strftime('%Y-%m-%d %H:%M:%S')
         cursor.execute("""
-            INSERT INTO data (time, app, stream, requests, unique_users, data_sent)
-            VALUES (%s, %s, %s, %s, %s, %s)
+            INSERT INTO data (time, server, app, stream, requests, unique_users, data_sent)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
             ON DUPLICATE KEY UPDATE 
                 requests=VALUES(requests), unique_users=VALUES(unique_users), data_sent=VALUES(data_sent)
-        """, (timestamp_str, row['App'], row['Stream'], row['Requests'], row['Unique Users'], data_sent_adjusted))
+        """, (timestamp_str, hostname, row['App'], row['Stream'], row['Requests'], row['Unique Users'], data_sent_adjusted))
 
     db_connection.commit()
     cursor.close()
@@ -87,6 +91,7 @@ def monitor_file(filename):
             print(f"{datetime.now()} - An error occurred: {e}")
             time.sleep(30)  
 
+hostname = get_hostname()
 if __name__ == "__main__":
     file_path = "/home/ubuntu/CDN/data/data.csv"
     monitor_file(file_path)
