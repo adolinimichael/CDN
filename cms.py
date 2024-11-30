@@ -6,7 +6,7 @@ import json
 import subprocess
 import socket
 import threading
-
+import datetime
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'  # Replace with a strong secret key
@@ -170,7 +170,8 @@ def download_excel():
     conn.close()
 
     df = pd.DataFrame(records).drop(columns=["id"], errors="ignore")
-    file_path = "/tmp/data_export.xlsx"
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    file_path = f"/tmp/data_export_{timestamp}.xlsx"    
     df.to_excel(file_path, index=False)
 
     return send_file(file_path, as_attachment=True, download_name="data_export.xlsx")
