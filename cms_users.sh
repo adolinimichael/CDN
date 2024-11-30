@@ -1,12 +1,29 @@
 #!/bin/bash
 
 ini_file="/home/ubuntu/CDN/mysql.ini"
-source "$ini_file"
+
+get_ini_value() {
+  section=$1
+  key=$2
+  value=$(awk -F '=' -v section="[$section]" -v key="$key" '
+    $0 ~ section {in_section=1}
+    in_section && $1 == key {print $2; exit}
+    ' "$ini_file" | xargs)
+  echo "$value"
+}
+
+# Read MySQL credentials from the ini file
+host=$(get_ini_value "mysql" "host")
+user=$(get_ini_value "mysql" "user")
+password=$(get_ini_value "mysql" "password")
+database=$(get_ini_value "mysql" "database")
 
 if [ -z "$user" ] || [ -z "$password" ] || [ -z "$database" ]; then
-  echo "Please ensure mysql.conf contains database user, password, and database name."
+  echo "Please ensure mysql.ini contains the correct user, password, and database name."
   exit 1
 fi
+
+echo "Using database: $database"
 
 echo "Choose an option:"
 echo "1. Add new user"
@@ -47,10 +64,11 @@ case $choice in
     ;;
 esac
 
+# Execute the SQL statement
 if [ "$choice" -eq 4 ]; then
-  mysql -u "$user" -p"$password" -D "$database" -e "$sql_statement"
+  mysql -h "$host" -u "$user" -p"$password" -D "$database" -e "$sql_statement"
 else
-  mysql -u "$user" -p"$password" -D "$database" -e "$sql_statement"
+  mysql -h "$host" -u "$user" -p"$password" -D "$database" -e "$sql_statement"
 
   if [ $? -eq 0 ]; then
     case $choice in
