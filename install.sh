@@ -51,4 +51,5 @@ chmod 755 /var/run/cms
 sudo systemctl daemon-reload
 sudo systemctl enable cms.service
 sudo systemctl start cms.service
+mkdir -p /home/ubuntu/CDN/log
 bash
