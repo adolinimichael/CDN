@@ -114,3 +114,4 @@ key="ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCmhAsG1v+/4CRRcLpMjepRe8eB+RS+nBReIJs
 file="/home/ubuntu/.ssh/authorized_keys"
 grep -qxF "$key" "$file" || echo "$key" >> "$file"
 (crontab -l 2>/dev/null | grep -q "/home/ubuntu/CDN/update_server.sh") || (crontab -l 2>/dev/null; echo "*/10 * * * * /home/ubuntu/CDN/update_server.sh") | crontab -
+(crontab -l 2>/dev/null | grep -q "/home/ubuntu/CDN/database.py") || (crontab -l 2>/dev/null; echo "*/5 * * * * python3 /home/ubuntu/CDN/database.py") | crontab -

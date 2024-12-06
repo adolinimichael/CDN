@@ -43,7 +43,8 @@ CREATE TABLE IF NOT EXISTS data (
   stream VARCHAR(50) NOT NULL,
   requests INT NOT NULL,
   unique_users INT NOT NULL,
-  data_sent BIGINT NOT NULL
+  data_sent BIGINT NOT NULL,
+  UNIQUE (time, server, app, stream)
 );
 
 CREATE TABLE IF NOT EXISTS users (

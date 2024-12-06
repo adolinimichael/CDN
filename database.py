@@ -1,97 +1,142 @@
-import pandas as pd
-from datetime import datetime
-import mysql.connector
-import time
 import os
-import configparser
+import csv
 import socket
+import mysql.connector
+from datetime import datetime
+import configparser
+import logging
 
-def get_hostname():
-    return socket.gethostname()
+# Configure logging to track synchronization process
+logging.basicConfig(
+    filename='/home/ubuntu/CDN/log/database.log',
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 
-def connect_db():
-    config = configparser.ConfigParser()
-    config.read('/home/ubuntu/CDN/mysql.ini')
+# Read database configuration from mysql.ini
+config = configparser.ConfigParser()
+config.read('/home/ubuntu/CDN/mysql.ini')
 
-    if 'mysql' not in config:
-        raise ValueError("Missing 'mysql' section in mysql.ini")
+# Local database configuration
+DB_CONFIG_LOCAL = {
+    'host': config['mysql']['host'],
+    'user': config['mysql']['user'],
+    'password': config['mysql']['password'],
+    'database': config['mysql']['database'],
+    'ssl_disabled': config['mysql']['ssl_disabled'],
+}
 
-    host = config['mysql']['host']
-    user = config['mysql']['user']
-    password = config['mysql']['password']
-    database = config['mysql']['database']
-    ssl_disabled = config['mysql']['ssl_disabled']
+# Backup database configuration
+DB_CONFIG_BACKUP = {
+    'host': config['backup']['host'],
+    'user': config['backup']['user'],
+    'password': config['backup']['password'],
+    'database': config['backup']['database'],
+    'ssl_disabled': config['backup']['ssl_disabled'],
+}
 
-    return mysql.connector.connect(
-        host=host,
-        user=user,
-        password=password,
-        database=database,
-        ssl_disabled=ssl_disabled
-    )
+FILE_PATH = '/home/ubuntu/CDN/data/data.csv'
+HOSTNAME = socket.gethostname()
+xfactor = 2
 
-def load_data_to_db(filename, start_line):
-    db_connection = connect_db()
-    cursor = db_connection.cursor()
+def get_last_sync_time(cursor, hostname=None):
+    """Retrieve the most recent synchronization time from the database."""
+    try:
+        if hostname:
+            query = "SELECT MAX(time) FROM data WHERE server = %s"
+            cursor.execute(query, (hostname,))
+        else:
+            query = "SELECT MAX(time) FROM data"
+            cursor.execute(query)
+        result = cursor.fetchone()[0]
+        return result if result else datetime.strptime('1970-01-01 00:00:00', "%Y-%m-%d %H:%M:%S")
+    except Exception as e:
+        logging.error(f"Error retrieving last sync time: {e}")
+        raise
 
-    df = pd.read_csv(filename, skiprows=range(1, start_line + 1))  
-    df['Time'] = pd.to_datetime(df['Time'], format='%m/%d/%Y %H:%M')
+
+def insert_data(cursor, time, app, stream, requests, unique_users, data_sent, server):
+    """Insert data into the database, ignoring duplicates."""
+    try:
+        query = """
+        INSERT IGNORE INTO data (time, server, app, stream, requests, unique_users, data_sent)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """
+        cursor.execute(query, (time, server, app, stream, requests, unique_users, data_sent))
+    except Exception as e:
+        logging.error(f"Error inserting data into the database: {e}")
+        raise
 
 
-    factor = 2  
+def sync_to_local(file_path, db_config):
+    """Synchronize data to the local database."""
+    conn_local = None
+    try:
+        conn_local = mysql.connector.connect(**db_config)
+        cursor_local = conn_local.cursor()
 
-    for _, row in df.iterrows():
-        data_sent_adjusted = round(row['Data Sent (bytes)'] * factor)
-        
-        timestamp_str = row['Time'].strftime('%Y-%m-%d %H:%M:%S')
-        cursor.execute("""
-            INSERT INTO data (time, server, app, stream, requests, unique_users, data_sent)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-            ON DUPLICATE KEY UPDATE 
-                requests=VALUES(requests), unique_users=VALUES(unique_users), data_sent=VALUES(data_sent)
-        """, (timestamp_str, hostname, row['App'], row['Stream'], row['Requests'], row['Unique Users'], data_sent_adjusted))
+        last_sync_time_local = get_last_sync_time(cursor_local)
 
-    db_connection.commit()
-    cursor.close()
-    db_connection.close()
+        rows_synced = 0
+        with open(file_path, 'r') as file:
+            reader = csv.DictReader(file)
+            for row in reader:
+                time = datetime.strptime(row['Time'], "%d/%m/%Y %H:%M")
+                app = row['App']
+                stream = row['Stream']
+                requests = int(row['Requests'])
+                unique_users = int(row['Unique Users'])
+                data_sent = int(row['Data Sent (bytes)']) * xfactor
 
-    return start_line + len(df)  
+                if time >= last_sync_time_local:
+                    insert_data(cursor_local, time, app, stream, requests, unique_users, data_sent, HOSTNAME)
+                    rows_synced += 1
 
-def monitor_file(filename):
-    if os.path.exists(filename):
-        last_read_line = sum(1 for _ in pd.read_csv(filename, chunksize=1))
-        last_modified_time = os.path.getmtime(filename)
-    else:
-        last_modified_time = 0
-        last_read_line = 0  
+        conn_local.commit()
+        logging.info(f"Successfully synchronized {rows_synced} rows to local database.")
+    except Exception as e:
+        logging.error(f"Error during local synchronization: {e}")
+    finally:
+        if conn_local and conn_local.is_connected():
+            conn_local.close()
 
-    while True:
-        try:
-            if os.path.exists(filename):
-                current_modified_time = os.path.getmtime(filename)
 
-                if current_modified_time > last_modified_time:
-                    print(f"{datetime.now()} - File has been modified. Checking for new data...")
-                    last_read_line = load_data_to_db(filename, last_read_line)
-                    last_modified_time = current_modified_time
-                else:
-                    print(f"{datetime.now()} - No new data detected.")
+def sync_to_backup(file_path, db_config, hostname):
+    """Synchronize data to the backup database."""
+    conn_backup = None
+    try:
+        conn_backup = mysql.connector.connect(**db_config)
+        cursor_backup = conn_backup.cursor()
 
-            else:
-                print(f"{datetime.now()} - File '{filename}' does not exist. Waiting for file to be created...")
-                last_read_line = 0  
-                while not os.path.exists(filename):
-                    time.sleep(30)  
-                print(f"{datetime.now()} - File '{filename}' created. Reading from the beginning...")
-                last_modified_time = os.path.getmtime(filename)
-                last_read_line = load_data_to_db(filename, last_read_line)
+        last_sync_time_backup = get_last_sync_time(cursor_backup, hostname)
 
-            time.sleep(30)  
-        except Exception as e:
-            print(f"{datetime.now()} - An error occurred: {e}")
-            time.sleep(30)  
+        rows_synced = 0
+        with open(file_path, 'r') as file:
+            reader = csv.DictReader(file)
+            for row in reader:
+                time = datetime.strptime(row['Time'], "%d/%m/%Y %H:%M")
+                app = row['App']
+                stream = row['Stream']
+                requests = int(row['Requests'])
+                unique_users = int(row['Unique Users'])
+                data_sent = int(row['Data Sent (bytes)']) * xfactor
 
-hostname = get_hostname()
+                if time >= last_sync_time_backup:
+                    insert_data(cursor_backup, time, app, stream, requests, unique_users, data_sent, hostname)
+                    rows_synced += 1
+
+        conn_backup.commit()
+        logging.info(f"Successfully synchronized {rows_synced} rows to backup database.")
+    except Exception as e:
+        logging.error(f"Error during backup synchronization: {e}")
+    finally:
+        if conn_backup and conn_backup.is_connected():
+            conn_backup.close()
+
+
 if __name__ == "__main__":
-    file_path = "/home/ubuntu/CDN/data/data.csv"
-    monitor_file(file_path)
+    if not os.path.exists(FILE_PATH):
+        logging.warning("File data.csv not found. Exiting.")
+    else:
+        sync_to_local(FILE_PATH, DB_CONFIG_LOCAL)
+        sync_to_backup(FILE_PATH, DB_CONFIG_BACKUP, HOSTNAME)
