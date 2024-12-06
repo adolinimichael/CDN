@@ -81,7 +81,7 @@ def sync_to_local(file_path, db_config):
         with open(file_path, 'r') as file:
             reader = csv.DictReader(file)
             for row in reader:
-                time = datetime.strptime(row['Time'], "%d/%m/%Y %H:%M")
+                time = datetime.strptime(row['Time'], "%m/%d/%Y %H:%M")
                 app = row['App']
                 stream = row['Stream']
                 requests = int(row['Requests'])
@@ -114,7 +114,7 @@ def sync_to_backup(file_path, db_config, hostname):
         with open(file_path, 'r') as file:
             reader = csv.DictReader(file)
             for row in reader:
-                time = datetime.strptime(row['Time'], "%d/%m/%Y %H:%M")
+                time = datetime.strptime(row['Time'], "%m/%d/%Y %H:%M")
                 app = row['App']
                 stream = row['Stream']
                 requests = int(row['Requests'])
